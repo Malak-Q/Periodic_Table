@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Periodic Table Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevents horizontal scrollbar */
+        }
+        .text-blue-700 { color: #2563EB; }
+        .text-blue-600 { color: #3B82F6; }
+        .text-teal-600 { color: #0D9488; }
+        .bg-blue-50 { background-color: #EFF6FF; }
+        .rounded-2xl { border-radius: 1rem; }
+        #element-page.hidden { display: none; }
+        #main-content.hidden { display: none; }
+        
+        /* General Periodic Table Grid */
+        .periodic-table-grid {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(0, 1fr));
+            gap: 0.25rem;
+        }
+
+        /* Specific positioning for the lanthanides and actinides to appear at the bottom */
+        .lanthanide-row { grid-row: 8; }
+        .actinide-row { grid-row: 9; }
+
+        /* The element bubble style is now shared, with shape determined by a separate class */
+        .element-bubble {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            min-height: 80px;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+            transform: scale(1);
+        }
+        /* Style for the square periodic table bubbles */
+        .square-bubble {
+            border-radius: 0.5rem;
+        }
+        /* Style for the round camper bubbles */
+        .round-bubble {
+            border-radius: 9999px; /* This makes it a perfect circle */
+            width: 96px; /* Explicit size for consistent circles */
+            height: 96px;
+        }
+        .element-bubble:hover {
+            transform: scale(1.1) rotate(2deg);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        .element-symbol {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .element-name {
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        /* Styles for the interactive bubbles */
+        .interactive-bubble {
+            transform: scale(1);
+            transition: transform 0.1s ease-in-out;
+        }
+        .interactive-bubble:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Adjusting the logo's position and z-index to be on top */
+        .logo-container {
+            z-index: 10;
+        }
+
+    </style>
+</head>
+<body class="bg-blue-50 text-gray-800 p-4 font-sans flex flex-col items-center min-h-screen relative">
+    <!-- Background music for the whole site -->
+    <audio id="background-music" loop autoplay>
+        <source src="https://raw.githubusercontent.com/Malak-Q/Periodic_Table/main/PeriodicTableSong.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <header class="text-center mb-10 w-full flex flex-col items-center justify-center relative">
+        <!-- Logo placeholder in the top-left corner -->
+        <a href="https://www.noorlandbh.com/en/">
+            <img src="https://www.noorlandbh.com/image.php?image=files/images/logo/NoorLand_logo_lth6ddln.png" alt="Noorland Summer Camp Logo" class="absolute left-4 top-0 w-24">
+        </a>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-700 mt-20">Our Element Adventure!</h1>
+        <p class="mt-2 text-xl sm:text-2xl font-medium text-orange-400">Created especially for the campers of Wonder Summer Camp!</p>
+        <p class="mt-2 text-xl sm:text-2xl font-medium text-blue-400">Find your element, and see what it reveals about you!</p>
+        <!-- Button to control music playback -->
+        <button id="toggle-music-btn" class="mt-4 px-4 py-2 bg-blue-500 text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition-colors duration-200">
+            Pause Music
+        </button>
+    </header>
+    <main id="main-content" class="w-full max-w-6xl">
+        <div id="camper-bubbles-container" class="flex flex-wrap justify-center gap-4 mb-16">
+            <!-- Camper element bubbles will be dynamically generated here in a circular format -->
+        </div>
+        <div id="interactive-periodic-table-container" class="mt-16 text-center">
+            <h2 class="text-3xl sm:text-4xl font-bold text-blue-700 mb-6">Pop an Element Bubble to Unlock a Fun Fact!</h2>
+            <div id="interactive-bubbles" class="periodic-table-grid">
+                <!-- Interactive bubbles will be dynamically generated here -->
+            </div>
+        </div>
+    </main>
+    <div id="element-page" class="hidden w-full max-w-2xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col items-center text-center">
+        <button id="back-button" class="self-start text-blue-500 hover:text-blue-700 transition-colors duration-200 mb-4 font-bold text-lg">
+            &larr; Back to the Bubbles
+        </button>
+        <div id="element-content" class="w-full">
+            <!-- Content will be generated by JavaScript -->
+        </div>
+    </div>
+    <!-- Message box for the popped elements -->
+    <div id="message-box" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white p-4 rounded-xl shadow-lg transform transition-all duration-300 scale-0 opacity-0 z-50">
+        <p id="message-text" class="font-semibold"></p>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get necessary HTML elements
+            const mainContent = document.getElementById('main-content');
+            const elementPage = document.getElementById('element-page');
+            const elementContent = document.getElementById('element-content');
+            const backButton = document.getElementById('back-button');
+            const camperBubblesContainer = document.getElementById('camper-bubbles-container');
+            const interactiveBubblesContainer = document.getElementById('interactive-bubbles');
+            const music = document.getElementById('background-music');
+            const toggleMusicBtn = document.getElementById('toggle-music-btn');
+            const messageBox = document.getElementById('message-box');
+            const messageText = document.getElementById('message-text');
+
+            // Data for all elements, now with fun facts
+            const elementsData = {
+                'H': { name: 'Hydrogen', symbol: 'H', atomicNumber: 1, gridColumn: 1, gridRow: 1, color: 'bg-red-400 hover:bg-red-500', funFact: 'Hydrogen is the most abundant element in the universe, making up about 75% of all matter.' },
+                'He': { name: 'Helium', symbol: 'He', atomicNumber: 2, gridColumn: 18, gridRow: 1, color: 'bg-purple-400 hover:bg-purple-500', funFact: 'Helium is a noble gas and is so light that it escapes Earth’s gravity and floats into space.' },
+                'Li': { name: 'Lithium', symbol: 'Li', atomicNumber: 3, gridColumn: 1, gridRow: 2, color: 'bg-yellow-400 hover:bg-yellow-500', funFact: 'Lithium is the lightest metal and is a crucial component in batteries for phones and electric cars.' },
+                'Be': { name: 'Beryllium', symbol: 'Be', atomicNumber: 4, gridColumn: 2, gridRow: 2, color: 'bg-green-400 hover:bg-green-500', funFact: 'Beryllium is a very strong and lightweight metal used to build parts for spacecrafts and missiles.' },
+                'B': { name: 'Boron', symbol: 'B', atomicNumber: 5, gridColumn: 13, gridRow: 2, color: 'bg-orange-400 hover:bg-orange-500', funFact: 'Boron is a key ingredient in "Borax," a household cleaner, and is also used to make some types of glass.' },
+                'C': { name: 'Carbon', symbol: 'C', atomicNumber: 6, gridColumn: 14, gridRow: 2, color: 'bg-gray-400 hover:bg-gray-500', funFact: 'Carbon is the "master builder" element, forming the basis of all known life on Earth.' },
+                'N': { name: 'Nitrogen', symbol: 'N', atomicNumber: 7, gridColumn: 15, gridRow: 2, color: 'bg-lime-400 hover:bg-lime-500', funFact: 'Nitrogen makes up about 78% of the air we breathe!' },
+                'O': { name: 'Oxygen', symbol: 'O', atomicNumber: 8, gridColumn: 16, gridRow: 2, color: 'bg-teal-400 hover:bg-teal-500', funFact: 'Oxygen is essential for life and makes up about 21% of the air we breathe.' },
+                'F': { name: 'Fluorine', symbol: 'F', atomicNumber: 9, gridColumn: 17, gridRow: 2, color: 'bg-cyan-400 hover:bg-cyan-500', funFact: 'Fluorine is the most reactive of all the elements!' },
+                'Ne': { name: 'Neon', symbol: 'Ne', atomicNumber: 10, gridColumn: 18, gridRow: 2, color: 'bg-pink-400 hover:bg-pink-500', funFact: 'Neon gas glows with a bright red-orange color when electricity passes through it.' },
+                'Na': { name: 'Sodium', symbol: 'Na', atomicNumber: 11, gridColumn: 1, gridRow: 3, color: 'bg-red-600 hover:bg-red-700', funFact: 'Sodium is a highly reactive metal that can ignite when it touches water.' },
+                'Mg': { name: 'Magnesium', symbol: 'Mg', atomicNumber: 12, gridColumn: 2, gridRow: 3, color: 'bg-green-400 hover:bg-green-500', funFact: 'Magnesium burns with a bright white light, which is why it’s used in fireworks and camera flashes.' },
+                'Al': { name: 'Aluminum', symbol: 'Al', atomicNumber: 13, gridColumn: 13, gridRow: 3, color: 'bg-blue-400 hover:bg-blue-500', funFact: 'Aluminum is incredibly light and strong, making it perfect for building airplanes and soda cans.' },
+                'Si': { name: 'Silicon', symbol: 'Si', atomicNumber: 14, gridColumn: 14, gridRow: 3, color: 'bg-indigo-400 hover:bg-indigo-500', funFact: 'Silicon is the main element in sand and is used to make computer chips.' },
+                'P': { name: 'Phosphorus', symbol: 'P', atomicNumber: 15, gridColumn: 15, gridRow: 3, color: 'bg-yellow-200 hover:bg-yellow-300', funFact: 'Phosphorus is a key ingredient in safety matches and makes them ignite when struck.' },
+                'S': { name: 'Sulfur', symbol: 'S', atomicNumber: 16, gridColumn: 16, gridRow: 3, color: 'bg-amber-400 hover:bg-amber-500', funFact: 'Sulfur has a distinct smell, often associated with rotten eggs or volcanoes.' },
+                'Cl': { name: 'Chlorine', symbol: 'Cl', atomicNumber: 17, gridColumn: 17, gridRow: 3, color: 'bg-green-600 hover:bg-green-700', funFact: 'Chlorine is a common household element used in bleach and to purify swimming pools.' },
+                'Ar': { name: 'Argon', symbol: 'Ar', atomicNumber: 18, gridColumn: 18, gridRow: 3, color: 'bg-rose-400 hover:bg-rose-500', funFact: 'Argon is a noble gas used to fill light bulbs and create a protective atmosphere for welding.' },
+                'K': { name: 'Potassium', symbol: 'K', atomicNumber: 19, gridColumn: 1, gridRow: 4, color: 'bg-purple-600 hover:bg-purple-700', funFact: 'Potassium is an important nutrient found in bananas that helps our bodies function properly.' },
+                'Ca': { name: 'Calcium', symbol: 'Ca', atomicNumber: 20, gridColumn: 2, gridRow: 4, color: 'bg-violet-400 hover:bg-violet-500', funFact: 'Calcium is a key mineral for building strong bones and teeth.' },
+                'Sc': { name: 'Scandium', symbol: 'Sc', atomicNumber: 21, gridColumn: 3, gridRow: 4, color: 'bg-blue-300 hover:bg-blue-400', funFact: 'Scandium is used to make high-performance sports equipment like bicycle frames and baseball bats.' },
+                'Ti': { name: 'Titanium', symbol: 'Ti', atomicNumber: 22, gridColumn: 4, gridRow: 4, color: 'bg-blue-400 hover:bg-blue-500', funFact: 'Titanium is a super strong and corrosion-resistant metal used in jet engines and medical implants.' },
+                'V': { name: 'Vanadium', symbol: 'V', atomicNumber: 23, gridColumn: 5, gridRow: 4, color: 'bg-blue-500 hover:bg-blue-600', funFact: 'Vanadium is a metal that can change color, making it useful for creating different colored pigments.' },
+                'Cr': { name: 'Chromium', symbol: 'Cr', atomicNumber: 24, gridColumn: 6, gridRow: 4, color: 'bg-blue-600 hover:bg-blue-700', funFact: 'Chromium is the element that gives rubies their beautiful red color.' },
+                'Mn': { name: 'Manganese', symbol: 'Mn', atomicNumber: 25, gridColumn: 7, gridRow: 4, color: 'bg-blue-700 hover:bg-blue-800', funFact: 'Manganese is a key element for making steel strong and rust-resistant.' },
+                'Fe': { name: 'Iron', symbol: 'Fe', atomicNumber: 26, gridColumn: 8, gridRow: 4, color: 'bg-indigo-400 hover:bg-indigo-500', funFact: 'Iron is a super-strong metal used to build things like skyscrapers and bridges.' },
+                'Co': { name: 'Cobalt', symbol: 'Co', atomicNumber: 27, gridColumn: 9, gridRow: 4, color: 'bg-indigo-500 hover:bg-indigo-600', funFact: 'Cobalt is used to create a beautiful blue pigment in paints and ceramics.' },
+                'Ni': { name: 'Nickel', symbol: 'Ni', atomicNumber: 28, gridColumn: 10, gridRow: 4, color: 'bg-indigo-600 hover:bg-indigo-700', funFact: 'Nickel is used to make stainless steel and is also found in some coins.' },
+                'Cu': { name: 'Copper', symbol: 'Cu', atomicNumber: 29, gridColumn: 11, gridRow: 4, color: 'bg-orange-400 hover:bg-orange-500', funFact: 'Copper is a great conductor of electricity, which is why it’s used in electrical wires.' },
+                'Zn': { name: 'Zinc', symbol: 'Zn', atomicNumber: 30, gridColumn: 12, gridRow: 4, color: 'bg-gray-300 hover:bg-gray-400', funFact: 'Zinc is used to galvanize steel, protecting it from rust.' },
+                'Ga': { name: 'Gallium', symbol: 'Ga', atomicNumber: 31, gridColumn: 13, gridRow: 4, color: 'bg-purple-300 hover:bg-purple-400', funFact: 'Gallium is a metal that will melt in the palm of your hand!' },
+                'Ge': { name: 'Germanium', symbol: 'Ge', atomicNumber: 32, gridColumn: 14, gridRow: 4, color: 'bg-purple-400 hover:bg-purple-500', funFact: 'Germanium is used in fiber-optic communication systems to transmit light signals.' },
+                'As': { name: 'Arsenic', symbol: 'As', atomicNumber: 33, gridColumn: 15, gridRow: 4, color: 'bg-purple-500 hover:bg-purple-600', funFact: 'Arsenic is a poisonous element that was historically used as a poison.' },
+                'Se': { name: 'Selenium', 'symbol': 'Se', atomicNumber: 34, gridColumn: 16, gridRow: 4, color: 'bg-purple-600 hover:bg-purple-700', funFact: 'Selenium is a nutrient for humans and animals, but is toxic in large amounts.' },
+                'Br': { name: 'Bromine', symbol: 'Br', atomicNumber: 35, gridColumn: 17, gridRow: 4, color: 'bg-pink-600 hover:bg-pink-700', funFact: 'Bromine is a reddish-brown liquid at room temperature and has a strong, unpleasant odor.' },
+                'Kr': { name: 'Krypton', symbol: 'Kr', atomicNumber: 36, gridColumn: 18, gridRow: 4, color: 'bg-yellow-500 hover:bg-yellow-600', funFact: 'Krypton is a noble gas used in some types of lighting and camera flashes.' },
+                'Rb': { name: 'Rubidium', symbol: 'Rb', atomicNumber: 37, gridColumn: 1, gridRow: 5, color: 'bg-red-700 hover:bg-red-800', funFact: 'Rubidium is a soft, silvery-white metal that reacts violently with water.' },
+                'Sr': { name: 'Strontium', symbol: 'Sr', atomicNumber: 38, gridColumn: 2, gridRow: 5, color: 'bg-green-600 hover:bg-green-700', funFact: 'Strontium is the element that gives some fireworks their brilliant red color!' },
+                'Y': { name: 'Yttrium', symbol: 'Y', atomicNumber: 39, gridColumn: 3, gridRow: 5, color: 'bg-blue-300 hover:bg-blue-400', funFact: 'Yttrium is a key component in the production of some television screens and lasers.' },
+                'Zr': { name: 'Zirconium', symbol: 'Zr', atomicNumber: 40, gridColumn: 4, gridRow: 5, color: 'bg-blue-400 hover:bg-blue-500', funFact: 'Zirconium is a highly corrosion-resistant metal used in nuclear reactors and surgical instruments.' },
+                'Nb': { name: 'Niobium', symbol: 'Nb', atomicNumber: 41, gridColumn: 5, gridRow: 5, color: 'bg-blue-500 hover:bg-blue-600', funFact: 'Niobium is used to create superalloys for jet engines and gas turbines.' },
+                'Mo': { name: 'Molybdenum', symbol: 'Mo', atomicNumber: 42, gridColumn: 6, gridRow: 5, color: 'bg-blue-600 hover:bg-blue-700', funFact: 'Molybdenum is a crucial element for certain enzymes in our bodies.' },
+                'Tc': { name: 'Technetium', symbol: 'Tc', atomicNumber: 43, gridColumn: 7, gridRow: 5, color: 'bg-blue-700 hover:bg-blue-800', funFact: 'Technetium is the lightest element that has no stable isotopes and is always radioactive.' },
+                'Ru': { name: 'Ruthenium', symbol: 'Ru', atomicNumber: 44, gridColumn: 8, gridRow: 5, color: 'bg-indigo-400 hover:bg-indigo-500', funFact: 'Ruthenium is a rare and hard metal used to harden platinum and palladium alloys.' },
+                'Rh': { name: 'Rhodium', symbol: 'Rh', atomicNumber: 45, gridColumn: 9, gridRow: 5, color: 'bg-indigo-500 hover:bg-indigo-600', funFact: 'Rhodium is one of the rarest and most valuable precious metals on Earth.' },
+                'Pd': { name: 'Palladium', symbol: 'Pd', atomicNumber: 46, gridColumn: 10, gridRow: 5, color: 'bg-indigo-600 hover:bg-indigo-700', funFact: 'Palladium is used in catalytic converters in cars to reduce harmful emissions.' },
+                'Ag': { name: 'Silver', symbol: 'Ag', atomicNumber: 47, gridColumn: 11, gridRow: 5, color: 'bg-gray-200 hover:bg-gray-300', funFact: 'Silver has the highest electrical conductivity of any element.' },
+                'Cd': { name: 'Cadmium', symbol: 'Cd', atomicNumber: 48, gridColumn: 12, gridRow: 5, color: 'bg-gray-400 hover:bg-gray-500', funFact: 'Cadmium is a toxic metal that was used to make red and yellow pigments.' },
+                'In': { name: 'Indium', symbol: 'In', atomicNumber: 49, gridColumn: 13, gridRow: 5, color: 'bg-green-300 hover:bg-green-400', funFact: 'Indium is a very soft metal used to make transparent conductors for touch screens.' },
+                'Sn': { name: 'Tin', symbol: 'Sn', atomicNumber: 50, gridColumn: 14, gridRow: 5, color: 'bg-green-400 hover:bg-green-500', funFact: 'Tin is a soft, silvery-white metal that has been used since ancient times to make bronze.' },
+                'Sb': { name: 'Antimony', symbol: 'Sb', atomicNumber: 51, gridColumn: 15, gridRow: 5, color: 'bg-green-500 hover:bg-green-600', funFact: 'Antimony is a brittle metalloid used in batteries and some types of semiconductors.' },
+                'Te': { name: 'Tellurium', symbol: 'Te', atomicNumber: 52, gridColumn: 16, gridRow: 5, color: 'bg-green-600 hover:bg-green-700', funFact: 'Tellurium is a very rare element that can be used to improve the machinability of copper and steel.' },
+                'I': { name: 'Iodine', symbol: 'I', atomicNumber: 53, gridColumn: 17, gridRow: 5, color: 'bg-cyan-700 hover:bg-cyan-800', funFact: 'Iodine is an essential nutrient for our bodies and is often added to table salt.' },
+                'Xe': { name: 'Xenon', symbol: 'Xe', atomicNumber: 54, gridColumn: 18, gridRow: 5, color: 'bg-rose-600 hover:bg-rose-700', funFact: 'Xenon is used in some specialized light sources, such as car headlights and movie projectors.' },
+                'Cs': { name: 'Cesium', symbol: 'Cs', atomicNumber: 55, gridColumn: 1, gridRow: 6, color: 'bg-red-800 hover:bg-red-900', funFact: 'Cesium is a highly reactive metal used in atomic clocks, which are the most accurate timekeeping devices.' },
+                'Ba': { name: 'Barium', symbol: 'Ba', atomicNumber: 56, gridColumn: 2, gridRow: 6, color: 'bg-green-700 hover:bg-green-800', funFact: 'Barium is used to create the bright green color in fireworks.' },
+                'La': { name: 'Lanthanum', symbol: 'La', atomicNumber: 57, gridColumn: 3, gridRow: 6, color: 'bg-orange-300 hover:bg-orange-400', funFact: 'Lanthanum is used in camera lenses to make them more resistant to scratches.' },
+                'Ce': { name: 'Cerium', symbol: 'Ce', atomicNumber: 58, gridColumn: 4, gridRow: 6, color: 'bg-orange-400 hover:bg-orange-500', funFact: 'Cerium is used as a polishing agent for glass and is a component in some cigarette lighter flints.' },
+                'Pr': { name: 'Praseodymium', symbol: 'Pr', atomicNumber: 59, gridColumn: 5, gridRow: 6, color: 'bg-orange-500 hover:bg-orange-600', funFact: 'Praseodymium is used to color glass and ceramics a light green or yellow color.' },
+                'Nd': { name: 'Neodymium', symbol: 'Nd', atomicNumber: 60, gridColumn: 6, gridRow: 6, color: 'bg-orange-600 hover:bg-orange-700', funFact: 'Neodymium is used in very powerful magnets found in headphones and speakers.' },
+                'Pm': { name: 'Promethium', symbol: 'Pm', atomicNumber: 61, gridColumn: 7, gridRow: 6, color: 'bg-orange-700 hover:bg-orange-800', funFact: 'Promethium is one of the two elements on the periodic table that is always radioactive.' },
+                'Sm': { name: 'Samarium', symbol: 'Sm', atomicNumber: 62, gridColumn: 8, gridRow: 6, color: 'bg-orange-800 hover:bg-orange-900', funFact: 'Samarium is used in some permanent magnets that can withstand very high temperatures.' },
+                'Eu': { name: 'Europium', symbol: 'Eu', atomicNumber: 63, gridColumn: 9, gridRow: 6, color: 'bg-orange-900 hover:bg-orange-950', funFact: 'Europium is used to create the bright red color on TV screens and computer monitors.' },
+                'Gd': { name: 'Gadolinium', symbol: 'Gd', atomicNumber: 64, gridColumn: 10, gridRow: 6, color: 'bg-yellow-300 hover:bg-yellow-400', funFact: 'Gadolinium is used in medical imaging to enhance the contrast of MRI scans.' },
+                'Tb': { name: 'Terbium', symbol: 'Tb', atomicNumber: 65, gridColumn: 11, gridRow: 6, color: 'bg-yellow-400 hover:bg-yellow-500', funFact: 'Terbium is used to create the bright green color on TV screens and monitors.' },
+                'Dy': { name: 'Dysprosium', symbol: 'Dy', atomicNumber: 66, gridColumn: 12, gridRow: 6, color: 'bg-yellow-500 hover:bg-yellow-600', funFact: 'Dysprosium is used in modern wind turbines and electric car motors.' },
+                'Ho': { name: 'Holmium', symbol: 'Ho', atomicNumber: 67, gridColumn: 13, gridRow: 6, color: 'bg-yellow-600 hover:bg-yellow-700', funFact: 'Holmium has the highest magnetic strength of any element.' },
+                'Er': { name: 'Erbium', symbol: 'Er', atomicNumber: 68, gridColumn: 14, gridRow: 6, color: 'bg-yellow-700 hover:bg-yellow-800', funFact: 'Erbium is used in special lasers for medical applications, like skin treatments.' },
+                'Tm': { name: 'Thulium', symbol: 'Tm', atomicNumber: 69, gridColumn: 15, gridRow: 6, color: 'bg-yellow-800 hover:bg-yellow-900', funFact: 'Thulium is used as a portable radiation source for X-rays.' },
+                'Yb': { name: 'Ytterbium', symbol: 'Yb', atomicNumber: 70, gridColumn: 16, gridRow: 6, color: 'bg-yellow-900 hover:bg-yellow-950', funFact: 'Ytterbium is used in some scientific research to study quantum computing.' },
+                'Lu': { name: 'Lutetium', symbol: 'Lu', atomicNumber: 71, gridColumn: 17, gridRow: 6, color: 'bg-lime-300 hover:bg-lime-400', funFact: 'Lutetium is a dense and stable element used in medical treatments.' },
+                'Hf': { name: 'Hafnium', symbol: 'Hf', atomicNumber: 72, gridColumn: 4, gridRow: 7, color: 'bg-blue-300 hover:bg-blue-400', funFact: 'Hafnium is used to control nuclear reactions in reactors and submarines.' },
+                'Ta': { name: 'Tantalum', symbol: 'Ta', atomicNumber: 73, gridColumn: 5, gridRow: 7, color: 'bg-blue-400 hover:bg-blue-500', funFact: 'Tantalum is a highly corrosion-resistant metal used in surgical implants and electronics.' },
+                'W': { name: 'Tungsten', symbol: 'W', atomicNumber: 74, gridColumn: 6, gridRow: 7, color: 'bg-blue-500 hover:bg-blue-600', funFact: 'Tungsten has the highest melting point of any metal and is used in light bulb filaments.' },
+                'Re': { name: 'Rhenium', symbol: 'Re', atomicNumber: 75, gridColumn: 7, gridRow: 7, color: 'bg-blue-600 hover:bg-blue-700', funFact: 'Rhenium is a very rare and expensive metal used in high-temperature alloys for jet engines.' },
+                'Os': { name: 'Osmium', symbol: 'Os', atomicNumber: 76, gridColumn: 8, gridRow: 7, color: 'bg-blue-700 hover:bg-blue-800', funFact: 'Osmium is the densest naturally occurring element on Earth.' },
+                'Ir': { name: 'Iridium', symbol: 'Ir', atomicNumber: 77, gridColumn: 9, gridRow: 7, color: 'bg-indigo-500 hover:bg-indigo-600', funFact: 'Iridium is very resistant to corrosion and is one of the rarest elements in Earth\'s crust.' },
+                'Pt': { name: 'Platinum', symbol: 'Pt', atomicNumber: 78, gridColumn: 10, gridRow: 7, color: 'bg-indigo-600 hover:bg-indigo-700', funFact: 'Platinum is a precious, dense metal that is even rarer than gold.' },
+                'Au': { name: 'Gold', symbol: 'Au', atomicNumber: 79, gridColumn: 11, gridRow: 7, color: 'bg-yellow-600 hover:bg-yellow-700', funFact: 'Gold is so malleable that a single ounce can be stretched into a wire 50 miles long.' },
+                'Hg': { name: 'Mercury', symbol: 'Hg', atomicNumber: 80, gridColumn: 12, gridRow: 7, color: 'bg-zinc-400 hover:bg-zinc-500', funFact: 'Mercury is a heavy, silvery liquid at room temperature and is a very toxic element.' },
+                'Tl': { name: 'Thallium', symbol: 'Tl', atomicNumber: 81, gridColumn: 13, gridRow: 7, color: 'bg-green-400 hover:bg-green-500', funFact: 'Thallium is a highly toxic element that was once used as a rat poison.' },
+                'Pb': { name: 'Lead', symbol: 'Pb', atomicNumber: 82, gridColumn: 14, gridRow: 7, color: 'bg-slate-500 hover:bg-slate-600', funFact: 'Lead is a dense, soft, and malleable metal, but it is also very toxic.' },
+                'Bi': { name: 'Bismuth', symbol: 'Bi', atomicNumber: 83, gridColumn: 15, gridRow: 7, color: 'bg-green-600 hover:bg-green-700', funFact: 'Bismuth is a shiny, brittle metal that can form a beautiful iridescent crystal when heated.' },
+                'Po': { name: 'Polonium', symbol: 'Po', atomicNumber: 84, gridColumn: 16, gridRow: 7, color: 'bg-green-700 hover:bg-green-800', funFact: 'Polonium is a highly radioactive element, with a single gram being able to reach a temperature of 500°C!' },
+                'At': { name: 'Astatine', symbol: 'At', atomicNumber: 85, gridColumn: 17, gridRow: 7, color: 'bg-cyan-800 hover:bg-cyan-900', funFact: 'Astatine is the rarest naturally occurring element on Earth.' },
+                'Rn': { name: 'Radon', symbol: 'Rn', atomicNumber: 86, gridColumn: 18, gridRow: 7, color: 'bg-rose-700 hover:bg-rose-800', funFact: 'Radon is a radioactive gas that can cause lung cancer if found in homes in high amounts.' },
+                'Fr': { name: 'Francium', symbol: 'Fr', atomicNumber: 87, gridColumn: 1, gridRow: 8, color: 'bg-red-900 hover:bg-red-950', funFact: 'Francium is the second rarest naturally occurring element and is highly radioactive.' },
+                'Ra': { name: 'Radium', symbol: 'Ra', atomicNumber: 88, gridColumn: 2, gridRow: 8, color: 'bg-green-800 hover:bg-green-900', funFact: 'Radium is a radioactive element that was once used in glow-in-the-dark paints.' },
+                'Ac': { name: 'Actinium', symbol: 'Ac', atomicNumber: 89, gridColumn: 3, gridRow: 8, color: 'bg-pink-300 hover:bg-pink-400', funFact: 'Actinium is a highly radioactive and rare element that glows in the dark.' },
+                'Th': { name: 'Thorium', symbol: 'Th', atomicNumber: 90, gridColumn: 4, gridRow: 8, color: 'bg-pink-400 hover:bg-pink-500', funFact: 'Thorium is a radioactive metal that is being researched as a potential energy source for nuclear power plants.' },
+                'Pa': { name: 'Protactinium', symbol: 'Pa', atomicNumber: 91, gridColumn: 5, gridRow: 8, color: 'bg-pink-500 hover:bg-pink-600', funFact: 'Protactinium is a rare, toxic, and highly radioactive element.' },
+                'U': { name: 'Uranium', symbol: 'U', atomicNumber: 92, gridColumn: 6, gridRow: 8, color: 'bg-pink-600 hover:bg-pink-700', funFact: 'Uranium is the heaviest naturally occurring element and is a major fuel for nuclear power.' },
+                'Np': { name: 'Neptunium', symbol: 'Np', atomicNumber: 93, gridColumn: 7, gridRow: 8, color: 'bg-pink-700 hover:bg-pink-800', funFact: 'Neptunium is a radioactive element named after the planet Neptune.' },
+                'Pu': { name: 'Plutonium', symbol: 'Pu', atomicNumber: 94, gridColumn: 8, gridRow: 8, color: 'bg-pink-800 hover:bg-pink-900', funFact: 'Plutonium is a highly radioactive element used in some nuclear weapons and spacecraft power sources.' },
+                'Am': { name: 'Americium', symbol: 'Am', atomicNumber: 95, gridColumn: 9, gridRow: 8, color: 'bg-pink-900 hover:bg-pink-950', funFact: 'Americium is a radioactive element used in smoke detectors!' },
+                'Cm': { name: 'Curium', symbol: 'Cm', atomicNumber: 96, gridColumn: 10, gridRow: 8, color: 'bg-rose-300 hover:bg-rose-400', funFact: 'Curium is a radioactive element named after Marie and Pierre Curie.' },
+                'Bk': { name: 'Berkelium', symbol: 'Bk', atomicNumber: 97, gridColumn: 11, gridRow: 8, color: 'bg-rose-400 hover:bg-rose-500', funFact: 'Berkelium is a synthetic radioactive element named after Berkeley, California.' },
+                'Cf': { name: 'Californium', symbol: 'Cf', atomicNumber: 98, gridColumn: 12, gridRow: 8, color: 'bg-rose-500 hover:bg-rose-600', funFact: 'Californium is a powerful neutron emitter used to find gold and silver ores.' },
+                'Es': { name: 'Einsteinium', symbol: 'Es', atomicNumber: 99, gridColumn: 13, gridRow: 8, color: 'bg-rose-600 hover:bg-rose-700', funFact: 'Einsteinium is a synthetic element named after Albert Einstein.' },
+                'Fm': { name: 'Fermium', symbol: 'Fm', atomicNumber: 100, gridColumn: 14, gridRow: 8, color: 'bg-rose-700 hover:bg-rose-800', funFact: 'Fermium is a synthetic element named after the physicist Enrico Fermi.' },
+                'Md': { name: 'Mendelevium', symbol: 'Md', atomicNumber: 101, gridColumn: 15, gridRow: 8, color: 'bg-rose-800 hover:bg-rose-900', funFact: 'Mendelevium is a synthetic element named after Dmitri Mendeleev, the creator of the periodic table.' },
+                'No': { name: 'Nobelium', symbol: 'No', atomicNumber: 102, gridColumn: 16, gridRow: 8, color: 'bg-rose-900 hover:bg-rose-950', funFact: 'Nobelium is a synthetic element named after Alfred Nobel, the inventor of dynamite.' },
+                'Lr': { name: 'Lawrencium', symbol: 'Lr', atomicNumber: 103, gridColumn: 17, gridRow: 8, color: 'bg-cyan-300 hover:bg-cyan-400', funFact: 'Lawrencium is a synthetic element named after Ernest O. Lawrence, the inventor of the cyclotron.' }
+            };
+            const camperElements = {
+                'H': { name: 'Hydrogen', symbol: 'H', atomicNumber: 1, story: 'Alhusain Tawfiq’s special element is Hydrogen! It is the most common element in the universe and is the fuel that powers stars in the sky. Just like Hydrogen, Alhusain is a superstar camper with lots of energy to explore!', color: 'bg-red-400 hover:bg-red-500' },
+                'He': { name: 'Helium', symbol: 'He', atomicNumber: 2, story: 'Malak Hasan’s special element is Helium! This is the gas that makes balloons float and can make your voice sound funny and squeaky. Just like Helium, Malak is a fun-loving and playful person who makes everyone smile!', color: 'bg-purple-400 hover:bg-purple-500' },
+                'Li': { name: 'Lithium', symbol: 'Li', atomicNumber: 3, story: 'Lulwah Khalifa’s special element is Lithium! This element is a superstar in batteries that power our phones and electric cars. The story can be about how Lulwah has the power and energy to do amazing things!', color: 'bg-yellow-400 hover:bg-yellow-500' },
+                'C': { name: 'Carbon', symbol: 'C', atomicNumber: 6, story: 'Ali Abdulla’s special element is Carbon! This amazing element is found in everything from your pencil to a sparkling diamond. Carbon is a “master builder,” and so is Ali, who loves to create and imagine new things!', color: 'bg-gray-400 hover:bg-gray-500' },
+                'Ne': { name: 'Neon', symbol: 'Ne', atomicNumber: 10, story: 'Nayla Khalifa’s special element is Neon! This gas glows with a bright, beautiful color when it gets a little electricity. Just like Neon, Nayla is a brilliant and fun person who always shines bright!', color: 'bg-pink-400 hover:bg-pink-500' },
+                'Mg': { name: 'Magnesium', symbol: 'Mg', atomicNumber: 12, story: 'Mohammed Mahdi’s special element is Magnesium! This is a light, strong metal used in fireworks that make bright, beautiful flashes in the sky. Just like Magnesium, Mohammed’s ideas are super bright and make everything around him shine!', color: 'bg-green-400 hover:bg-green-500' },
+                'Al': { name: 'Aluminum', symbol: 'Al', atomicNumber: 13, story: 'Abdul Aziz Husain’s special element is Aluminum! This is a light metal used to make airplanes and soda cans. Just like an airplane, Abdul is full of energy and ready to fly into a new adventure!', color: 'bg-blue-400 hover:bg-blue-500' },
+                'Fe': { name: 'Iron', symbol: 'Fe', atomicNumber: 26, story: 'Fahad Husain’s special element is Iron! This super-strong metal is used to build things like skyscrapers and bridges. Just like Iron, Fahad is a strong and reliable friend who you can always count on.', color: 'bg-indigo-400 hover:bg-indigo-500' },
+                'Cu': { name: 'Copper', symbol: 'Cu', atomicNumber: 29, story: 'Mariam Hasan’s special element is Copper! This reddish-brown metal is used to make wires that help electricity travel and connect things. Just like Copper, Mariam is a great friend who helps everyone connect and have fun together!', color: 'bg-orange-400 hover:bg-orange-500' },
+                'Au': { name: 'Gold', symbol: 'Au', atomicNumber: 79, story: 'Albandari Ali’s special element is Gold! Gold is a beautiful, shiny, and very valuable metal used to make crowns and jewelry. Just like Gold, Albandari is unique and precious!', color: 'bg-yellow-600 hover:bg-yellow-700' },
+                'Na': { name: 'Sodium', symbol: 'Na', atomicNumber: 11, story: 'Sameera Saad’s special element is Sodium! Sodium is a part of salt, and a little bit of it makes food taste better. Just like Sodium, Sameera adds a pinch of magic and fun to our camp!', color: 'bg-red-600 hover:bg-red-700' }
+            };
+            
+            // Get all element symbols
+            const elementSymbols = Object.keys(elementsData);
+            let scene, camera, renderer, controls, electronGroups = [];
+            let currentSymbol = null;
+            
+            const showMessage = (message) => {
+                messageText.textContent = message;
+                messageBox.classList.remove('scale-0', 'opacity-0');
+                messageBox.classList.add('scale-100', 'opacity-100');
+                setTimeout(() => {
+                    messageBox.classList.remove('scale-100', 'opacity-100');
+                    messageBox.classList.add('scale-0', 'opacity-0');
+                }, 5000); // Changed from 3000 to 5000 milliseconds
+            };
+            
+            // Function to create a 3D atomic model
+            const createAtom = (atomicNumber) => {
+                const protons = atomicNumber;
+                const neutrons = atomicNumber; // Simple approximation
+                const electrons = atomicNumber;
+                // Clear any existing scene objects
+                if (scene) {
+                    while(scene.children.length > 0){ 
+                        scene.remove(scene.children[0]); 
+                    }
+                    electronGroups = [];
+                }
+                
+                // Scene setup
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(400, 400); // Set a fixed size for the canvas
+                renderer.setClearColor(0x000000, 0); // Transparent background
+                const canvasContainer = document.getElementById('canvas-container');
+                if (canvasContainer) {
+                    canvasContainer.innerHTML = ''; // Clear previous canvas
+                    canvasContainer.appendChild(renderer.domElement);
+                } else {
+                    const newContainer = document.createElement('div');
+                    newContainer.id = 'canvas-container';
+                    newContainer.className = 'w-48 h-48 sm:w-80 sm:h-80 mx-auto mb-6';
+                    elementContent.insertBefore(newContainer, elementContent.firstChild);
+                    newContainer.appendChild(renderer.domElement);
+                }
+                // Orbit Controls
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableZoom = false;
+                // Create nucleus
+                const nucleusGroup = new THREE.Group();
+                const protonGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+                const neutronGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+                const protonMaterial = new THREE.MeshBasicMaterial({ color: 0xcc0000 });
+                const neutronMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+                
+                // Add protons and neutrons in a cluster
+                for (let i = 0; i < protons; i++) {
+                    const proton = new THREE.Mesh(protonGeometry, protonMaterial);
+                    proton.position.set(
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4
+                    );
+                    nucleusGroup.add(proton);
+                }
+                for (let i = 0; i < neutrons; i++) {
+                    const neutron = new THREE.Mesh(neutronGeometry, neutronMaterial);
+                    neutron.position.set(
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4,
+                        (Math.random() - 0.5) * 0.4
+                    );
+                    nucleusGroup.add(neutron);
+                }
+                scene.add(nucleusGroup);
+                // Create electron shells and electrons
+                let shellRadius = 1;
+                let electronsAdded = 0;
+                const electronMaterial = new THREE.MeshBasicMaterial({ color: 0x00aaff });
+                const electronGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+                while (electronsAdded < electrons) {
+                    const shell = new THREE.Group();
+                    const maxElectronsInShell = shellRadius === 1 ? 2 : Math.min(electrons - electronsAdded, 8); // Simplified
+                    for (let i = 0; i < maxElectronsInShell; i++) {
+                        const electron = new THREE.Mesh(electronGeometry, electronMaterial);
+                        const angle = (2 * Math.PI / maxElectronsInShell) * i;
+                        electron.position.x = Math.cos(angle) * shellRadius;
+                        electron.position.z = Math.sin(angle) * shellRadius;
+                        shell.add(electron);
+                    }
+                    scene.add(shell);
+                    electronGroups.push(shell);
+                    electronsAdded += maxElectronsInShell;
+                    shellRadius += 0.5;
+                }
+                camera.position.z = 3;
+                camera.lookAt(scene.position);
+                // Animation loop
+                const animate = () => {
+                    if (currentSymbol === atomicNumber) { // Only animate if on the current element page
+                        requestAnimationFrame(animate);
+                        nucleusGroup.rotation.y += 0.005;
+                        electronGroups.forEach((group, index) => {
+                            group.rotation.y += 0.01 + index * 0.005;
+                        });
+                        controls.update();
+                        renderer.render(scene, camera);
+                    }
+                };
+                animate();
+            };
+
+            // Function to generate the main periodic table with camper stories
+            const createCamperBubbles = () => {
+                const elementsArray = Object.values(camperElements);
+                elementsArray.sort((a, b) => a.atomicNumber - b.atomicNumber);
+                const bubblesHtml = elementsArray.map(data => {
+                    return `
+                        <div class="element-bubble round-bubble ${data.color} text-white" data-element="${data.symbol}">
+                            <span class="element-symbol">${data.symbol}</span>
+                            <span class="element-name">${data.name}</span>
+                        </div>
+                    `;
+                }).join('');
+                camperBubblesContainer.innerHTML = bubblesHtml;
+            };
+
+            // Function to generate the interactive periodic table with all elements
+            const createInteractivePeriodicTable = () => {
+                const allElementsArray = Object.values(elementsData);
+                allElementsArray.sort((a, b) => a.atomicNumber - b.atomicNumber);
+                const bubblesHtml = allElementsArray.map(data => {
+                    let style = `grid-column: ${data.gridColumn}; grid-row: ${data.gridRow};`;
+                    // Adjust grid row for Lanthanides and Actinides to place them at the bottom
+                    if (data.atomicNumber >= 57 && data.atomicNumber <= 71) {
+                        style = `grid-column: ${data.atomicNumber - 54}; grid-row: 8;`;
+                    }
+                    if (data.atomicNumber >= 89 && data.atomicNumber <= 103) {
+                        style = `grid-column: ${data.atomicNumber - 86}; grid-row: 9;`;
+                    }
+                    return `
+                        <div class="element-bubble interactive-bubble square-bubble ${data.color} text-white" data-element="${data.symbol}" style="${style}">
+                            <span class="element-symbol">${data.symbol}</span>
+                            <span class="element-name">${data.name}</span>
+                        </div>
+                    `;
+                }).join('');
+                interactiveBubblesContainer.innerHTML = bubblesHtml;
+            };
+
+            // Event listener for the main camper bubbles
+            camperBubblesContainer.addEventListener('click', (event) => {
+                const elementBubble = event.target.closest('[data-element]');
+                if (elementBubble) {
+                    const symbol = elementBubble.dataset.element;
+                    const data = camperElements[symbol]; // Use camperElements data
+                    currentSymbol = data.atomicNumber;
+                    mainContent.classList.add('hidden');
+                    elementPage.classList.remove('hidden');
+                    elementContent.innerHTML = `
+                        <div id="canvas-container" class="w-48 h-48 sm:w-80 sm:h-80 mx-auto mb-6"></div>
+                        <h2 class="text-3xl sm:text-4xl font-bold text-teal-600 mb-2">${data.name} (${data.symbol})</h2>
+                        <p class="text-lg sm:text-xl leading-relaxed text-gray-700">${data.story}</p>
+                    `;
+                    createAtom(data.atomicNumber);
+                }
+            });
+
+            // Event listener for the interactive "Pop" elements table
+            interactiveBubblesContainer.addEventListener('click', (event) => {
+                const elementBubble = event.target.closest('[data-element]');
+                if (elementBubble) {
+                    const symbol = elementBubble.dataset.element;
+                    const data = elementsData[symbol];
+                    if (data && data.funFact) {
+                        showMessage(data.funFact);
+                    } else {
+                        showMessage("No fun fact found for this element. Try another one!");
+                    }
+                    elementBubble.style.opacity = 0; // "Pop" the bubble by fading it out
+                    setTimeout(() => elementBubble.remove(), 300); // Remove after a short delay
+                }
+            });
+
+            // Back button functionality
+            backButton.addEventListener('click', () => {
+                currentSymbol = null; // Stop animation
+                elementPage.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+            });
+
+            // Handle background music playback with a toggle button
+            if (music) {
+                if (music.paused) {
+                    toggleMusicBtn.textContent = 'Play Music';
+                } else {
+                    toggleMusicBtn.textContent = 'Pause Music';
+                }
+                toggleMusicBtn.addEventListener('click', () => {
+                    if (music.paused) {
+                        music.play().then(() => {
+                            toggleMusicBtn.textContent = 'Pause Music';
+                        }).catch(e => {
+                            console.log('Playback failed:', e);
+                        });
+                    } else {
+                        music.pause();
+                        toggleMusicBtn.textContent = 'Play Music';
+                    }
+                });
+            }
+
+            // Generate both periodic tables on page load
+            createCamperBubbles();
+            createInteractivePeriodicTable();
+        });
+    </script>
+</body>
+</html>
