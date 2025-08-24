@@ -109,7 +109,7 @@
             <!-- Camper element bubbles will be dynamically generated here in a circular format -->
         </div>
         <div id="interactive-periodic-table-container" class="mt-16 text-center">
-            <h2 class="text-3xl sm:text-4xl font-bold text-blue-700 mb-6">Pop an Element Bubble to Unlock a Fun Fact!</h2>
+            <h2 class="text-3xl sm:text-4xl font-bold text-blue-700 mb-6">Pop an Element Bubble to Unlock a Fun Fact</h2>
             <div id="interactive-bubbles" class="periodic-table-grid">
                 <!-- Interactive bubbles will be dynamically generated here -->
             </div>
@@ -252,13 +252,15 @@
                 'He': { name: 'Helium', symbol: 'He', atomicNumber: 2, story: 'Malak Hasan’s special element is Helium! This is the gas that makes balloons float and can make your voice sound funny and squeaky. Just like Helium, Malak is a fun-loving and playful person who makes everyone smile!', color: 'bg-purple-400 hover:bg-purple-500' },
                 'Li': { name: 'Lithium', symbol: 'Li', atomicNumber: 3, story: 'Lulwah Khalifa’s special element is Lithium! This element is a superstar in batteries that power our phones and electric cars. The story can be about how Lulwah has the power and energy to do amazing things!', color: 'bg-yellow-400 hover:bg-yellow-500' },
                 'C': { name: 'Carbon', symbol: 'C', atomicNumber: 6, story: 'Ali Abdulla’s special element is Carbon! This amazing element is found in everything from your pencil to a sparkling diamond. Carbon is a “master builder,” and so is Ali, who loves to create and imagine new things!', color: 'bg-gray-400 hover:bg-gray-500' },
+                'Cr': { name: 'Chromium', symbol: 'Cr', atomicNumber: 24, story: 'Yousif’s special element is Chromium! This super shiny and protective metal is used to make things bright and strong. Just like Chromium, Yousif has a brilliant personality that makes him shine, and a strong character that makes him a reliable friend!', color: 'bg-blue-600 hover:bg-blue-700' },
                 'Ne': { name: 'Neon', symbol: 'Ne', atomicNumber: 10, story: 'Nayla Khalifa’s special element is Neon! This gas glows with a bright, beautiful color when it gets a little electricity. Just like Neon, Nayla is a brilliant and fun person who always shines bright!', color: 'bg-pink-400 hover:bg-pink-500' },
+                'Na': { name: 'Sodium', symbol: 'Na', atomicNumber: 11, story: 'Sameera Saad’s special element is Sodium! Sodium is a part of salt, and a little bit of it makes food taste better. Just like Sodium, Sameera adds a pinch of magic and fun to our camp!', color: 'bg-red-600 hover:bg-red-700' },
                 'Mg': { name: 'Magnesium', symbol: 'Mg', atomicNumber: 12, story: 'Mohammed Mahdi’s special element is Magnesium! This is a light, strong metal used in fireworks that make bright, beautiful flashes in the sky. Just like Magnesium, Mohammed’s ideas are super bright and make everything around him shine!', color: 'bg-green-400 hover:bg-green-500' },
                 'Al': { name: 'Aluminum', symbol: 'Al', atomicNumber: 13, story: 'Abdul Aziz Husain’s special element is Aluminum! This is a light metal used to make airplanes and soda cans. Just like an airplane, Abdul is full of energy and ready to fly into a new adventure!', color: 'bg-blue-400 hover:bg-blue-500' },
                 'Fe': { name: 'Iron', symbol: 'Fe', atomicNumber: 26, story: 'Fahad Husain’s special element is Iron! This super-strong metal is used to build things like skyscrapers and bridges. Just like Iron, Fahad is a strong and reliable friend who you can always count on.', color: 'bg-indigo-400 hover:bg-indigo-500' },
                 'Cu': { name: 'Copper', symbol: 'Cu', atomicNumber: 29, story: 'Mariam Hasan’s special element is Copper! This reddish-brown metal is used to make wires that help electricity travel and connect things. Just like Copper, Mariam is a great friend who helps everyone connect and have fun together!', color: 'bg-orange-400 hover:bg-orange-500' },
-                'Au': { name: 'Gold', symbol: 'Au', atomicNumber: 79, story: 'Albandari Ali’s special element is Gold! Gold is a beautiful, shiny, and very valuable metal used to make crowns and jewelry. Just like Gold, Albandari is unique and precious!', color: 'bg-yellow-600 hover:bg-yellow-700' },
-                'Na': { name: 'Sodium', symbol: 'Na', atomicNumber: 11, story: 'Sameera Saad’s special element is Sodium! Sodium is a part of salt, and a little bit of it makes food taste better. Just like Sodium, Sameera adds a pinch of magic and fun to our camp!', color: 'bg-red-600 hover:bg-red-700' }
+                'Ag': { name: 'Silver', symbol: 'Ag', atomicNumber: 47, story: 'Ebrahim’s special element is Silver! This beautiful, shiny metal is often valued for its quiet elegance and strength. Just like Silver, Ebrahim has a thoughtful nature and a gentle strength that makes him a special part of our group!', color: 'bg-gray-200 hover:bg-gray-300' },
+                'Au': { name: 'Gold', symbol: 'Au', atomicNumber: 79, story: 'Albandari Ali’s special element is Gold! Gold is a beautiful, shiny, and very valuable metal used to make crowns and jewelry. Just like Gold, Albandari is unique and precious!', color: 'bg-yellow-600 hover:bg-yellow-700' }
             };
             
             // Get all element symbols
@@ -273,7 +275,7 @@
                 setTimeout(() => {
                     messageBox.classList.remove('scale-100', 'opacity-100');
                     messageBox.classList.add('scale-0', 'opacity-0');
-                }, 5000); // Changed from 3000 to 5000 milliseconds
+                }, 5000);
             };
             
             // Function to create a 3D atomic model
@@ -478,5 +480,7 @@
             createInteractivePeriodicTable();
         });
     </script>
+    // Malak Alqaidoom's Code
 </body>
 </html>
+
